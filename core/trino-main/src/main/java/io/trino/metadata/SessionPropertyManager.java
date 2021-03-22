@@ -191,10 +191,10 @@ public final class SessionPropertyManager
 
     public void validateSystemSessionProperty(String propertyName, String propertyValue)
     {
-        PropertyMetadata<?> propertyMetadata = getSystemSessionPropertyMetadata(propertyName)
-                .orElseThrow(() -> new TrinoException(INVALID_SESSION_PROPERTY, "Unknown session property " + propertyName));
+//        PropertyMetadata<?> propertyMetadata = getSystemSessionPropertyMetadata(propertyName)
+//                .orElseThrow(() -> new TrinoException(INVALID_SESSION_PROPERTY, "Unknown session property " + propertyName));
 
-        decodePropertyValue(propertyName, propertyValue, propertyMetadata.getJavaType(), propertyMetadata);
+//        decodePropertyValue(propertyName, propertyValue, propertyMetadata.getJavaType(), propertyMetadata);
     }
 
     public void validateCatalogSessionProperty(CatalogName catalog, String catalogName, String propertyName, String propertyValue)

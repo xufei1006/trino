@@ -42,7 +42,9 @@ import static java.util.Objects.requireNonNull;
 
 public final class SymbolsExtractor
 {
-    private SymbolsExtractor() {}
+    private SymbolsExtractor()
+    {
+    }
 
     public static Set<Symbol> extractUnique(PlanNode node)
     {

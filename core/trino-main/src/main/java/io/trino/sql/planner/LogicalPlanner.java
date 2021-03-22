@@ -45,6 +45,7 @@ import io.trino.sql.analyzer.RelationId;
 import io.trino.sql.analyzer.RelationType;
 import io.trino.sql.analyzer.Scope;
 import io.trino.sql.planner.StatisticsAggregationPlanner.TableStatisticAggregation;
+import io.trino.sql.planner.iterative.IterativeOptimizer;
 import io.trino.sql.planner.optimizations.PlanOptimizer;
 import io.trino.sql.planner.plan.AggregationNode;
 import io.trino.sql.planner.plan.Assignments;
@@ -60,6 +61,7 @@ import io.trino.sql.planner.plan.TableFinishNode;
 import io.trino.sql.planner.plan.TableScanNode;
 import io.trino.sql.planner.plan.TableWriterNode;
 import io.trino.sql.planner.plan.ValuesNode;
+import io.trino.sql.planner.planprinter.PlanPrinter;
 import io.trino.sql.planner.sanity.PlanSanityChecker;
 import io.trino.sql.tree.Analyze;
 import io.trino.sql.tree.Cast;
@@ -85,6 +87,10 @@ import io.trino.sql.tree.StringLiteral;
 import io.trino.type.TypeCoercion;
 import io.trino.type.UnknownType;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -201,10 +207,43 @@ public class LogicalPlanner
 
         planSanityChecker.validateIntermediatePlan(root, session, metadata, typeOperators, typeAnalyzer, symbolAllocator.getTypes(), warningCollector);
 
+        try {
+            File file = new File("/tmp/plan");
+            if (!file.exists()) {
+                file.mkdir();
+            }
+            else {
+                final File[] files = file.listFiles();
+                for (File f : files) {
+                    f.delete();
+                }
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
+            int i = 100;
             for (PlanOptimizer optimizer : planOptimizers) {
                 root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator, idAllocator, warningCollector);
+                String graph = PlanPrinter.graphvizLogicalPlan(root, symbolAllocator.getTypes());
+                BufferedWriter writer = null;
+                try {
+                    if (optimizer instanceof IterativeOptimizer) {
+                        writer = new BufferedWriter(new FileWriter("/tmp/plan/" + i + "-" + optimizer.getClass().getSimpleName() + ":" + ((IterativeOptimizer) optimizer).getRules() + ".dot"));
+                    }
+                    else {
+                        writer = new BufferedWriter(new FileWriter("/tmp/plan/" + i + "-" + optimizer.getClass().getSimpleName() + ".dot"));
+                    }
+                    writer.write(graph);
+                    writer.close();
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
+                i++;
             }
         }
 
@@ -427,19 +466,19 @@ public class LogicalPlanner
 
         if (isMaterializedViewRefresh) {
             return createTableWriterPlan(
-                analysis,
-                plan,
-                requireNonNull(writerTarget, "writerTarget for materialized view refresh is null"),
-                insertedTableColumnNames,
-                insertedColumns,
-                newTableLayout,
-                statisticsMetadata);
+                    analysis,
+                    plan,
+                    requireNonNull(writerTarget, "writerTarget for materialized view refresh is null"),
+                    insertedTableColumnNames,
+                    insertedColumns,
+                    newTableLayout,
+                    statisticsMetadata);
         }
         InsertReference insertTarget = new InsertReference(
                 tableHandle,
                 insertedTableColumnNames.stream()
-                    .map(columns::get)
-                    .collect(toImmutableList()));
+                        .map(columns::get)
+                        .collect(toImmutableList()));
         return createTableWriterPlan(
                 analysis,
                 plan,

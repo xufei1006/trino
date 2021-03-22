@@ -126,7 +126,8 @@ public class TestPlannerWarnings
                 new RuleStatsRecorder(),
                 queryRunner.getStatsCalculator(),
                 queryRunner.getCostCalculator(),
-                ImmutableSet.copyOf(rules));
+                ImmutableSet.copyOf(rules),
+                "RuleStatsRecorder");
 
         return queryRunner.createPlan(session, sql, ImmutableList.of(optimizer), OPTIMIZED_AND_VALIDATED, warningCollector);
     }

@@ -508,6 +508,11 @@ public class Analysis
         this.columnReferences.putAll(columnReferences);
     }
 
+    public Map<NodeRef<Node>, Scope> getScopes()
+    {
+        return scopes;
+    }
+
     public Scope getScope(Node node)
     {
         return tryGetScope(node).orElseThrow(() -> new IllegalArgumentException(format("Analysis does not contain information for node: %s", node)));

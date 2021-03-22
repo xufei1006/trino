@@ -59,13 +59,19 @@ public class IterativeOptimizer
     private final List<PlanOptimizer> legacyRules;
     private final RuleIndex ruleIndex;
     private final Predicate<Session> useLegacyRules;
+    private final String name;
 
     public IterativeOptimizer(RuleStatsRecorder stats, StatsCalculator statsCalculator, CostCalculator costCalculator, Set<Rule<?>> rules)
     {
-        this(stats, statsCalculator, costCalculator, session -> false, ImmutableList.of(), rules);
+        this(stats, statsCalculator, costCalculator, session -> false, ImmutableList.of(), rules, "null");
     }
 
-    public IterativeOptimizer(RuleStatsRecorder stats, StatsCalculator statsCalculator, CostCalculator costCalculator, Predicate<Session> useLegacyRules, List<PlanOptimizer> legacyRules, Set<Rule<?>> newRules)
+    public IterativeOptimizer(RuleStatsRecorder stats, StatsCalculator statsCalculator, CostCalculator costCalculator, Set<Rule<?>> rules, String name)
+    {
+        this(stats, statsCalculator, costCalculator, session -> false, ImmutableList.of(), rules, name);
+    }
+
+    public IterativeOptimizer(RuleStatsRecorder stats, StatsCalculator statsCalculator, CostCalculator costCalculator, Predicate<Session> useLegacyRules, List<PlanOptimizer> legacyRules, Set<Rule<?>> newRules, String name)
     {
         this.stats = requireNonNull(stats, "stats is null");
         this.statsCalculator = requireNonNull(statsCalculator, "statsCalculator is null");
@@ -75,7 +81,7 @@ public class IterativeOptimizer
         this.ruleIndex = RuleIndex.builder()
                 .register(newRules)
                 .build();
-
+        this.name = name;
         stats.registerAll(newRules);
     }
 
@@ -129,7 +135,7 @@ public class IterativeOptimizer
         boolean progress = false;
 
         while (!done) {
-            context.checkTimeoutNotExhausted();
+//            context.checkTimeoutNotExhausted();
 
             done = true;
             Iterator<Rule<?>> possiblyMatchingRules = ruleIndex.getCandidates(node).iterator();
@@ -294,5 +300,10 @@ public class IterativeOptimizer
                 throw new TrinoException(OPTIMIZER_TIMEOUT, format("The optimizer exhausted the time limit of %d ms", timeoutInMilliseconds));
             }
         }
+    }
+
+    public String getRules()
+    {
+        return name;
     }
 }

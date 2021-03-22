@@ -81,7 +81,7 @@ public class TpchConnectorFactory
     public Connector create(String catalogName, Map<String, String> properties, ConnectorContext context)
     {
         int splitsPerNode = getSplitsPerNode(properties);
-        ColumnNaming columnNaming = ColumnNaming.valueOf(properties.getOrDefault(TPCH_COLUMN_NAMING_PROPERTY, ColumnNaming.SIMPLIFIED.name()).toUpperCase(ENGLISH));
+        ColumnNaming columnNaming = ColumnNaming.valueOf(properties.getOrDefault(TPCH_COLUMN_NAMING_PROPERTY, ColumnNaming.STANDARD.name()).toUpperCase(ENGLISH));
         NodeManager nodeManager = context.getNodeManager();
 
         return new Connector()

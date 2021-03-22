@@ -133,7 +133,7 @@ public class TpchMetadata
 
     public TpchMetadata()
     {
-        this(ColumnNaming.SIMPLIFIED, true, true, Optional.empty(), Optional.empty());
+        this(ColumnNaming.STANDARD, true, true, Optional.empty(), Optional.empty());
     }
 
     public TpchMetadata(

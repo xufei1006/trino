@@ -28,6 +28,7 @@ import io.trino.sql.planner.plan.CorrelatedJoinNode;
 import io.trino.sql.planner.plan.DistinctLimitNode;
 import io.trino.sql.planner.plan.EnforceSingleRowNode;
 import io.trino.sql.planner.plan.ExchangeNode;
+import io.trino.sql.planner.plan.ExplainAnalyzeNode;
 import io.trino.sql.planner.plan.FilterNode;
 import io.trino.sql.planner.plan.GroupIdNode;
 import io.trino.sql.planner.plan.IndexJoinNode;
@@ -451,7 +452,15 @@ public final class GraphvizPrinter
         @Override
         public Void visitTableScan(TableScanNode node, Void context)
         {
+            String catalogName = node.getTable().getCatalogName().getCatalogName();
             printNode(node, format("TableScan[%s]", node.getTable()), NODE_COLORS.get(NodeType.TABLESCAN));
+            return null;
+        }
+
+        @Override
+        public Void visitExplainAnalyze(ExplainAnalyzeNode node, Void context)
+        {
+            printNode(node, format("ExplainAnalyze[%s]", node.getSource()), NODE_COLORS.get(NodeType.TABLESCAN));
             return null;
         }
 
