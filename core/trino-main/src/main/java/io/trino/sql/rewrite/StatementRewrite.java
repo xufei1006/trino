@@ -20,6 +20,7 @@ import io.trino.execution.warnings.WarningCollector;
 import io.trino.metadata.Metadata;
 import io.trino.security.AccessControl;
 import io.trino.spi.security.GroupProvider;
+import io.trino.sql.SqlFormatter;
 import io.trino.sql.analyzer.QueryExplainer;
 import io.trino.sql.parser.SqlParser;
 import io.trino.sql.tree.Expression;
@@ -27,6 +28,9 @@ import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.Parameter;
 import io.trino.sql.tree.Statement;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,7 +46,9 @@ public final class StatementRewrite
             new ShowStatsRewrite(),
             new ExplainRewrite());
 
-    private StatementRewrite() {}
+    private StatementRewrite()
+    {
+    }
 
     public static Statement rewrite(
             Session session,
@@ -59,6 +65,13 @@ public final class StatementRewrite
     {
         for (Rewrite rewrite : REWRITES) {
             node = requireNonNull(rewrite.rewrite(session, metadata, parser, queryExplainer, node, parameters, parameterLookup, groupProvider, accessControl, warningCollector, statsCalculator), "Statement rewrite returned null");
+            try {
+                PrintStream outputStream = new PrintStream(new FileOutputStream("/tmp/" + rewrite.getClass().getSimpleName() + ".sql"), true);
+                outputStream.println(SqlFormatter.formatSql(node));
+            }
+            catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
         }
         return node;
     }

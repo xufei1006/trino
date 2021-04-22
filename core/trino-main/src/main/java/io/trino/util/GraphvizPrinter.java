@@ -59,7 +59,6 @@ import io.trino.sql.planner.plan.ValuesNode;
 import io.trino.sql.planner.plan.WindowNode;
 import io.trino.sql.tree.ComparisonExpression;
 import io.trino.sql.tree.Expression;
-import io.trino.sql.tree.SymbolReference;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -131,7 +130,9 @@ public final class GraphvizPrinter
         checkState(NODE_COLORS.size() == NodeType.values().length);
     }
 
-    private GraphvizPrinter() {}
+    private GraphvizPrinter()
+    {
+    }
 
     public static String printLogical(List<PlanFragment> fragments)
     {
@@ -215,7 +216,12 @@ public final class GraphvizPrinter
         @Override
         protected Void visitPlan(PlanNode node, Void context)
         {
-            throw new UnsupportedOperationException(format("Node %s does not have a Graphviz visitor", node.getClass().getName()));
+            printNode(node, format(node.getClass().getSimpleName()), NODE_COLORS.get(NodeType.TABLE_WRITER));
+
+            for (PlanNode planNode : node.getSources()) {
+                planNode.accept(this, context);
+            }
+            return null;
         }
 
         @Override
@@ -315,7 +321,7 @@ public final class GraphvizPrinter
         @Override
         public Void visitRemoteSource(RemoteSourceNode node, Void context)
         {
-            printNode(node, (node.getOrderingScheme().isPresent() ? "Merge" : "Exchange") + " 1:N", NODE_COLORS.get(NodeType.EXCHANGE));
+            printNode(node, (node.getOrderingScheme().isPresent() ? "RemoteMerge" : "RemoteExchange") + " 1:N", NODE_COLORS.get(NodeType.EXCHANGE));
             return null;
         }
 
@@ -375,11 +381,11 @@ public final class GraphvizPrinter
         {
             StringBuilder builder = new StringBuilder();
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
-                if ((entry.getValue() instanceof SymbolReference) &&
-                        ((SymbolReference) entry.getValue()).getName().equals(entry.getKey().getName())) {
-                    // skip identity assignments
-                    continue;
-                }
+//                if ((entry.getValue() instanceof SymbolReference) &&
+//                        ((SymbolReference) entry.getValue()).getName().equals(entry.getKey().getName())) {
+//                     skip identity assignments
+//                    continue;
+//                }
                 builder.append(format("%s := %s\\n", entry.getKey(), entry.getValue()));
             }
 
@@ -474,7 +480,7 @@ public final class GraphvizPrinter
         @Override
         public Void visitEnforceSingleRow(EnforceSingleRowNode node, Void context)
         {
-            printNode(node, "Scalar", NODE_COLORS.get(NodeType.PROJECT));
+            printNode(node, "EnforceSingleRowNode", NODE_COLORS.get(NodeType.PROJECT));
             return node.getSource().accept(this, context);
         }
 
@@ -520,7 +526,17 @@ public final class GraphvizPrinter
         @Override
         public Void visitApply(ApplyNode node, Void context)
         {
-            String parameters = Joiner.on(",").join(node.getCorrelation());
+            StringBuilder builder = new StringBuilder();
+            for (Map.Entry<Symbol, Expression> entry : node.getSubqueryAssignments().entrySet()) {
+//                if ((entry.getValue() instanceof SymbolReference) &&
+//                        ((SymbolReference) entry.getValue()).getName().equals(entry.getKey().getName())) {
+//                     skip identity assignments
+//                    continue;
+//                }
+                builder.append(format("%s := %s\\n", entry.getKey(), entry.getValue()));
+            }
+
+            String parameters = "Correlation \n" + Joiner.on(",").join(node.getCorrelation()) + "| Assignments \n" + builder.toString();
             printNode(node, "Apply", parameters, NODE_COLORS.get(NodeType.JOIN));
 
             node.getInput().accept(this, context);
@@ -631,7 +647,7 @@ public final class GraphvizPrinter
         /**
          * Escape characters that are special to graphviz.
          */
-        private static String escapeSpecialCharacters(String label)
+        public static String escapeSpecialCharacters(String label)
         {
             return label
                     .replace("<", "\\<")

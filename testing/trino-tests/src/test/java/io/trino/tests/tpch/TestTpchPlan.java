@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.sql.planner;
+package io.trino.tests.tpch;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -21,6 +21,10 @@ import io.trino.Session;
 import io.trino.connector.CatalogName;
 import io.trino.execution.warnings.WarningCollector;
 import io.trino.plugin.tpch.TpchConnectorFactory;
+import io.trino.sql.planner.LogicalPlanner;
+import io.trino.sql.planner.Plan;
+import io.trino.sql.planner.RuleStatsRecorder;
+import io.trino.sql.planner.SubPlan;
 import io.trino.sql.planner.assertions.PlanAssert;
 import io.trino.sql.planner.assertions.PlanMatchPattern;
 import io.trino.sql.planner.iterative.IterativeOptimizer;
@@ -104,13 +108,6 @@ public class TestTpchPlan
     {
         closeAllRuntimeException(queryRunner);
         queryRunner = null;
-    }
-
-    @Test
-    public void test()
-    {
-        String sql = "explain select * from customer";
-        subplan(sql, OPTIMIZED_AND_VALIDATED, false);
     }
 
     @Test

@@ -185,8 +185,6 @@ public class SqlQueryExecution
             // analyze query
             this.analysis = analyze(preparedQuery, stateMachine, metadata, groupProvider, accessControl, sqlParser, queryExplainer, warningCollector);
 
-            System.out.println(analysis.getScopes());
-
             stateMachine.addStateChangeListener(state -> {
                 if (!state.isDone()) {
                     return;

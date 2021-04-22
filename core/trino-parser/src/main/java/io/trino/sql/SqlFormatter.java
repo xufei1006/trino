@@ -166,7 +166,9 @@ public final class SqlFormatter
         @Override
         protected Void visitNode(Node node, Integer indent)
         {
-            throw new UnsupportedOperationException("not yet implemented: " + node);
+//            throw new UnsupportedOperationException("not yet implemented: " + node);
+            builder.append(node.getClass().getSimpleName());
+            return null;
         }
 
         @Override

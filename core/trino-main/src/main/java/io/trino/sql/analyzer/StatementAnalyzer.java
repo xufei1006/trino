@@ -1379,7 +1379,9 @@ class StatementAnalyzer
             analysis.unregisterTableForView();
 
             checkViewStaleness(view.getColumns(), descriptor.getVisibleFields(), name, table)
-                    .ifPresent(explanation -> { throw semanticException(VIEW_IS_STALE, table, "View '%s' is stale or in invalid state: %s", name, explanation); });
+                    .ifPresent(explanation -> {
+                        throw semanticException(VIEW_IS_STALE, table, "View '%s' is stale or in invalid state: %s", name, explanation);
+                    });
 
             // Derive the type of the view from the stored definition, not from the analysis of the underlying query.
             // This is needed in case the underlying table(s) changed and the query in the view now produces types that
@@ -1433,7 +1435,9 @@ class StatementAnalyzer
 
             List<ConnectorViewDefinition.ViewColumn> viewColumns = translateMaterializedViewColumns(view.getColumns());
             checkViewStaleness(viewColumns, descriptor.getVisibleFields(), name, table)
-                    .ifPresent(explanation -> { throw semanticException(VIEW_IS_STALE, table, "Materialized View '%s' is stale or in invalid state: %s", name, explanation); });
+                    .ifPresent(explanation -> {
+                        throw semanticException(VIEW_IS_STALE, table, "Materialized View '%s' is stale or in invalid state: %s", name, explanation);
+                    });
 
             // Derive the type of the materialized view from the stored definition, not from the analysis of the underlying query.
             // This is needed in case the underlying table(s) changed and the query in the materialized view now produces types that
@@ -3460,10 +3464,13 @@ class StatementAnalyzer
 
         private Scope createAndAssignScope(Node node, Optional<Scope> parentScope, RelationType relationType)
         {
+            System.out.println("Node : " + node.toString());
+            System.out.println("ParentScope : " + parentScope.toString());
             Scope scope = scopeBuilder(parentScope)
                     .withRelationType(RelationId.of(node), relationType)
                     .build();
 
+            System.out.println("Scope : " + scope.toString());
             analysis.setScope(node, scope);
             return scope;
         }

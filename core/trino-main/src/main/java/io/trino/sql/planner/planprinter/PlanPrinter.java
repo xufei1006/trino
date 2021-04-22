@@ -107,6 +107,9 @@ import io.trino.sql.tree.Row;
 import io.trino.sql.tree.SymbolReference;
 import io.trino.util.GraphvizPrinter;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -347,6 +350,19 @@ public class PlanPrinter
                 .append("\n");
 
         return builder.toString();
+    }
+
+    public static void printGraphviz(String plan, String path)
+    {
+        BufferedWriter initwriter = null;
+        try {
+            initwriter = new BufferedWriter(new FileWriter(path));
+            initwriter.write(plan);
+            initwriter.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static String graphvizLogicalPlan(PlanNode plan, TypeProvider types)

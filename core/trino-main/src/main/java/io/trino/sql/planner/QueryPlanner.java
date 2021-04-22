@@ -48,6 +48,7 @@ import io.trino.sql.planner.plan.TableWriterNode.DeleteTarget;
 import io.trino.sql.planner.plan.UnionNode;
 import io.trino.sql.planner.plan.ValuesNode;
 import io.trino.sql.planner.plan.WindowNode;
+import io.trino.sql.planner.planprinter.PlanPrinter;
 import io.trino.sql.tree.Cast;
 import io.trino.sql.tree.ComparisonExpression;
 import io.trino.sql.tree.Delete;
@@ -106,6 +107,7 @@ import static io.trino.sql.analyzer.ExpressionAnalyzer.isNumericType;
 import static io.trino.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static io.trino.sql.analyzer.TypeSignatureTranslator.toSqlType;
 import static io.trino.sql.planner.GroupingOperationRewriter.rewriteGroupingOperation;
+import static io.trino.sql.planner.LogicalPlanner.id;
 import static io.trino.sql.planner.OrderingScheme.sortItemToSortOrder;
 import static io.trino.sql.planner.PlanBuilder.newPlanBuilder;
 import static io.trino.sql.planner.ScopeAware.scopeAwareKey;
@@ -363,17 +365,32 @@ class QueryPlanner
     public RelationPlan plan(QuerySpecification node)
     {
         PlanBuilder builder = planFrom(node);
+        String fromPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(fromPlan, "/tmp/plan/" + id.getAndIncrement() + "-from-plan.dot");
 
         builder = filter(builder, analysis.getWhere(node), node);
+        String filterPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(filterPlan, "/tmp/plan/" + id.getAndIncrement() + "-filter-plan.dot");
+
         builder = aggregate(builder, node);
+        String aggPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(aggPlan, "/tmp/plan/" + id.getAndIncrement() + "-agg-plan.dot");
+
         builder = filter(builder, analysis.getHaving(node), node);
+        String havePlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(havePlan, "/tmp/plan/" + id.getAndIncrement() + "-having-plan.dot");
+
         builder = window(node, builder, ImmutableList.copyOf(analysis.getWindowFunctions(node)));
+        String windowPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(windowPlan, "/tmp/plan/" + id.getAndIncrement() + "-window-plan.dot");
 
         List<SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
         List<Expression> expressions = selectExpressions.stream()
                 .map(SelectExpression::getExpression)
                 .collect(toImmutableList());
         builder = subqueryPlanner.handleSubqueries(builder, expressions, node);
+        String selectPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(selectPlan, "/tmp/plan/" + id.getAndIncrement() + "-select-plan.dot");
 
         if (hasExpressionsToUnfold(selectExpressions)) {
             // pre-project the folded expressions to preserve any non-deterministic semantics of functions that might be referenced
@@ -407,18 +424,43 @@ class QueryPlanner
             builder = builder.withScope(analysis.getScope(node.getOrderBy().get()), newFields);
 
             builder = window(node, builder, ImmutableList.copyOf(analysis.getOrderByWindowFunctions(node.getOrderBy().get())));
+
+            String orderPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+            PlanPrinter.printGraphviz(orderPlan, "/tmp/plan/" + id.getAndIncrement() + "-orderby-plan.dot");
         }
 
         List<Expression> orderBy = analysis.getOrderByExpressions(node);
         builder = subqueryPlanner.handleSubqueries(builder, orderBy, node);
+
+        String orderSubuqeryPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(orderSubuqeryPlan, "/tmp/plan/" + id.getAndIncrement() + "-orderby-subquery-plan.dot");
+
         builder = builder.appendProjections(Iterables.concat(orderBy, outputs), symbolAllocator, idAllocator);
+        String projectPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(projectPlan, "/tmp/plan/" + id.getAndIncrement() + "-project-plan.dot");
 
         builder = distinct(builder, node, outputs);
+        String distinctPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(distinctPlan, "/tmp/plan/" + id.getAndIncrement() + "-distinct-plan.dot");
+
         Optional<OrderingScheme> orderingScheme = orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
         builder = sort(builder, orderingScheme);
+
+        String sortPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(sortPlan, "/tmp/plan/" + id.getAndIncrement() + "-sort-plan.dot");
+
         builder = offset(builder, node.getOffset());
+
+        String offsetPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(offsetPlan, "/tmp/plan/" + id.getAndIncrement() + "-offset-plan.dot");
+
         builder = limit(builder, node.getLimit(), orderingScheme);
+        String limitPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(limitPlan, "/tmp/plan/" + id.getAndIncrement() + "-limit-plan.dot");
+
         builder = builder.appendProjections(outputs, symbolAllocator, idAllocator);
+        String outputPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(outputPlan, "/tmp/plan/" + id.getAndIncrement() + "-output-plan.dot");
 
         return new RelationPlan(
                 builder.getRoot(),
@@ -509,7 +551,12 @@ class QueryPlanner
 
         subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, node);
 
-        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+        PlanBuilder newfilter = subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+
+        String selectPlan = PlanPrinter.graphvizLogicalPlan(newfilter.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(selectPlan, "/tmp/plan/" + id.getAndIncrement() + "-newfilter-plan.dot");
+
+        return newfilter;
     }
 
     private PlanBuilder aggregate(PlanBuilder subPlan, QuerySpecification node)

@@ -373,14 +373,14 @@ public class PlanOptimizers
                 ImmutableSet.of(
                         new InlineProjections(),
                         new RemoveRedundantIdentityProjections()),
-                "inlineProjections");
+                "InlineProjections");
 
         IterativeOptimizer projectionPushDown = new IterativeOptimizer(
                 ruleStats,
                 statsCalculator,
                 estimatedExchangesCostCalculator,
                 projectionPushdownRules,
-                "projectionPushDown");
+                "ProjectionPushDown");
 
         IterativeOptimizer simplifyOptimizer = new IterativeOptimizer(
                 ruleStats,
@@ -393,7 +393,7 @@ public class PlanOptimizers
                         .addAll(new CanonicalizeExpressions(metadata, typeAnalyzer).rules())
                         .add(new RemoveTrivialFilters())
                         .build(),
-                "simplifyOptimizer");
+                "SimplifyExpressions");
 
         IterativeOptimizer columnPruningOptimizer = new IterativeOptimizer(
                 ruleStats,
@@ -402,7 +402,7 @@ public class PlanOptimizers
                 session -> !isIterativeRuleBasedColumnPruning(session),
                 ImmutableList.of(new PruneUnreferencedOutputs(metadata)),
                 columnPruningRules,
-                "columnPruningOptimizer");
+                "ColumnPruning");
 
         builder.add(
                 // Clean up all the sugar in expressions, e.g. AtTimeZone, must be run before all the other optimizers
@@ -512,7 +512,7 @@ public class PlanOptimizers
                         statsCalculator,
                         estimatedExchangesCostCalculator,
                         columnPruningRules,
-                        "columnPruningRules"),
+                        "ColumnPruningRules"),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
@@ -527,16 +527,80 @@ public class PlanOptimizers
                         ImmutableSet.of(
                                 new RemoveRedundantEnforceSingleRowNode(),
                                 new RemoveUnreferencedScalarSubqueries(),
-                                new TransformUncorrelatedSubqueryToJoin(),
-                                new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
-                                new TransformCorrelatedJoinToJoin(metadata),
-                                new TransformCorrelatedGlobalAggregationWithProjection(metadata),
-                                new TransformCorrelatedGlobalAggregationWithoutProjection(metadata),
-                                new TransformCorrelatedDistinctAggregationWithProjection(metadata),
-                                new TransformCorrelatedDistinctAggregationWithoutProjection(metadata),
-                                new TransformCorrelatedGroupedAggregationWithProjection(metadata),
+                                new TransformUncorrelatedSubqueryToJoin()),
+                        "TransformUncorrelatedSubqueryToJoin"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformUncorrelatedInPredicateSubqueryToSemiJoin()),
+                        "TransformUncorrelatedInPredicateSubqueryToSemiJoin"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedJoinToJoin(metadata)),
+                        "TransformCorrelatedJoinToJoin"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedGlobalAggregationWithProjection(metadata)),
+                        "TransformCorrelatedGlobalAggregationWithProjection"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedGlobalAggregationWithoutProjection(metadata)),
+                        "TransformCorrelatedGlobalAggregationWithoutProjection"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedDistinctAggregationWithProjection(metadata)),
+                        "TransformCorrelatedDistinctAggregationWithProjection"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedDistinctAggregationWithoutProjection(metadata)),
+                        "TransformCorrelatedDistinctAggregationWithoutProjection"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
+                                new TransformCorrelatedGroupedAggregationWithProjection(metadata)),
+                        "TransformCorrelatedGroupedAggregationWithProjection"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveRedundantEnforceSingleRowNode(),
+                                new RemoveUnreferencedScalarSubqueries(),
                                 new TransformCorrelatedGroupedAggregationWithoutProjection(metadata)),
-                        "TransformUncorrelatedXXXTransformCorrelatedXXX"),
+                        "TransformCorrelatedGroupedAggregationWithoutProjection"),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
@@ -544,10 +608,26 @@ public class PlanOptimizers
                         ImmutableSet.of(
                                 new RemoveUnreferencedScalarApplyNodes(),
                                 new TransformCorrelatedInPredicateToJoin(metadata), // must be run after columnPruningOptimizer
-                                new TransformCorrelatedScalarSubquery(metadata), // must be run after TransformCorrelatedAggregation rules
-                                new TransformCorrelatedJoinToJoin(metadata),
                                 new ImplementFilteredAggregations(metadata)),
                         "TransformCorrelatedInPredicateToJoin"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveUnreferencedScalarApplyNodes(),
+                                new TransformCorrelatedScalarSubquery(metadata), // must be run after TransformCorrelatedAggregation rules
+                                new ImplementFilteredAggregations(metadata)),
+                        "TransformCorrelatedScalarSubquery"),
+                new IterativeOptimizer(
+                        ruleStats,
+                        statsCalculator,
+                        estimatedExchangesCostCalculator,
+                        ImmutableSet.of(
+                                new RemoveUnreferencedScalarApplyNodes(),
+                                new TransformCorrelatedJoinToJoin(metadata),
+                                new ImplementFilteredAggregations(metadata)),
+                        "TransformCorrelatedJoinToJoin"),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,

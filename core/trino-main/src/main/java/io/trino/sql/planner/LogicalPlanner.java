@@ -88,7 +88,6 @@ import io.trino.type.TypeCoercion;
 import io.trino.type.UnknownType;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.AbstractMap.SimpleImmutableEntry;
@@ -101,6 +100,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
@@ -207,24 +207,12 @@ public class LogicalPlanner
 
         planSanityChecker.validateIntermediatePlan(root, session, metadata, typeOperators, typeAnalyzer, symbolAllocator.getTypes(), warningCollector);
 
-        try {
-            File file = new File("/tmp/plan");
-            if (!file.exists()) {
-                file.mkdir();
-            }
-            else {
-                final File[] files = file.listFiles();
-                for (File f : files) {
-                    f.delete();
-                }
-            }
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
-            int i = 100;
+            String initPlan = PlanPrinter.graphvizLogicalPlan(root, symbolAllocator.getTypes());
+            PlanPrinter.printGraphviz(initPlan, "/tmp/plan/300-init.dot");
+
+            int i = 301;
+
             for (PlanOptimizer optimizer : planOptimizers) {
                 root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator, idAllocator, warningCollector);
                 String graph = PlanPrinter.graphvizLogicalPlan(root, symbolAllocator.getTypes());
@@ -702,8 +690,11 @@ public class LogicalPlanner
         return new OutputNode(idAllocator.getNextId(), plan.getRoot(), names.build(), outputs.build());
     }
 
+    public static AtomicInteger id = new AtomicInteger(200);
+
     private RelationPlan createRelationPlan(Analysis analysis, Query query)
     {
+        id.set(200);
         return new RelationPlanner(analysis, symbolAllocator, idAllocator, buildLambdaDeclarationToSymbolMap(analysis, symbolAllocator), metadata, Optional.empty(), session, ImmutableMap.of())
                 .process(query, null);
     }

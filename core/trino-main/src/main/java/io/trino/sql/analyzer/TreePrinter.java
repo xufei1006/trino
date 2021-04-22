@@ -11,10 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.sql;
+package io.trino.sql.analyzer;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import io.trino.sql.SqlFormatter;
 import io.trino.sql.tree.AliasedRelation;
 import io.trino.sql.tree.AllColumns;
 import io.trino.sql.tree.ArithmeticBinaryExpression;
@@ -35,6 +36,7 @@ import io.trino.sql.tree.LikePredicate;
 import io.trino.sql.tree.LogicalBinaryExpression;
 import io.trino.sql.tree.LongLiteral;
 import io.trino.sql.tree.Node;
+import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.OrderBy;
 import io.trino.sql.tree.QualifiedName;
 import io.trino.sql.tree.Query;
@@ -55,9 +57,17 @@ import io.trino.sql.tree.WindowDefinition;
 import io.trino.sql.tree.WindowReference;
 import io.trino.sql.tree.WindowSpecification;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.lang.String.format;
 
 public class TreePrinter
 {
@@ -70,6 +80,85 @@ public class TreePrinter
     {
         this.resolvedNameReferences = new IdentityHashMap<>(resolvedNameReferences);
         this.out = out;
+    }
+
+    public static void printGraphviz(Node root, Map<NodeRef<Node>, Scope> scopes, String path)
+    {
+        AtomicInteger atomicInteger = new AtomicInteger(0);
+        Map<Node, Integer> nodes = new HashMap<>();
+        extractNodes(atomicInteger, nodes, root);
+
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("digraph ast {\n");
+        builder.append("subgraph {\n");
+
+        appendNode(builder, root, scopes, nodes);
+        builder.append("}");
+        appendEdge(builder, root, nodes);
+        builder.append("}");
+
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter(path));
+            writer.write(builder.toString());
+            writer.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void appendNode(StringBuilder builder, Node root, Map<NodeRef<Node>, Scope> scopes, Map<Node, Integer> nodes)
+    {
+        int nodeId = nodes.get(root);
+        String label = root.getClass().getSimpleName();
+        String detail = escapeSpecialCharacters(SqlFormatter.formatSql(root));
+        if (scopes != null) {
+            Scope scope = scopes.get(NodeRef.of(root));
+            if (scope != null) {
+                StringBuilder scopebuilder = new StringBuilder();
+                for (Field field : scope.getRelationType().getAllFields()) {
+                    scopebuilder.append(field.getName());
+                    scopebuilder.append("\\n");
+                }
+                detail = detail + "|" + " AllFields  | " + scopebuilder.toString();
+            }
+        }
+        String color = "bisque";
+        builder.append(nodeId)
+                .append(format("[label=\"{%s|%s}\", style=\"rounded, filled\", shape=record, fillcolor=%s]", label, detail, color))
+                .append(';')
+                .append('\n');
+        for (Node node : root.getChildren()) {
+            appendNode(builder, node, scopes, nodes);
+        }
+    }
+
+    public static String escapeSpecialCharacters(String label)
+    {
+        return label
+                .replace("<", "\\<")
+                .replace(">", "\\>")
+                .replace("\"", "\\\"");
+    }
+
+    private static void appendEdge(StringBuilder builder, Node root, Map<Node, Integer> nodes)
+    {
+        for (Node node : root.getChildren()) {
+            int fromId = nodes.get(root);
+            int toId = nodes.get(node);
+            builder.append(fromId).append(" -> ").append(toId).append(";").append("\n");
+            appendEdge(builder, node, nodes);
+        }
+    }
+
+    private static void extractNodes(AtomicInteger id, Map<Node, Integer> nodes, Node root)
+    {
+        nodes.put(root, id.getAndIncrement());
+        for (Node node : root.getChildren()) {
+            extractNodes(id, nodes, node);
+        }
     }
 
     public void print(Node root)

@@ -27,6 +27,7 @@ import io.trino.sql.planner.plan.Assignments;
 import io.trino.sql.planner.plan.CorrelatedJoinNode;
 import io.trino.sql.planner.plan.EnforceSingleRowNode;
 import io.trino.sql.planner.plan.ProjectNode;
+import io.trino.sql.planner.planprinter.PlanPrinter;
 import io.trino.sql.tree.ComparisonExpression;
 import io.trino.sql.tree.ExistsPredicate;
 import io.trino.sql.tree.Expression;
@@ -54,6 +55,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Streams.stream;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.sql.planner.LogicalPlanner.id;
 import static io.trino.sql.planner.PlanBuilder.newPlanBuilder;
 import static io.trino.sql.planner.QueryPlanner.coerce;
 import static io.trino.sql.planner.ScopeAware.scopeAwareKey;
@@ -240,15 +242,26 @@ class SubqueryPlanner
                 analysis,
                 lambdaDeclarationToSymbolMap);
 
+        String selectPlan = PlanPrinter.graphvizLogicalPlan(subqueryPlan.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(selectPlan, "/tmp/plan/" + id.getAndIncrement() + "-subqueryPlan-plan.dot");
+
         subqueryPlan = subqueryPlan.withNewRoot(new EnforceSingleRowNode(idAllocator.getNextId(), subqueryPlan.getRoot()));
 
-        return appendCorrelatedJoin(
+        selectPlan = PlanPrinter.graphvizLogicalPlan(subqueryPlan.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(selectPlan, "/tmp/plan/" + id.getAndIncrement() + "-subqueryPlan-plan.dot");
+
+        PlanBuilder builder = appendCorrelatedJoin(
                 subPlan,
                 subqueryPlan,
                 scalarSubquery.getQuery(),
                 CorrelatedJoinNode.Type.INNER,
                 TRUE_LITERAL,
                 mapAll(cluster, subPlan.getScope(), getOnlyElement(relationPlan.getFieldMappings())));
+
+        selectPlan = PlanPrinter.graphvizLogicalPlan(builder.getRoot(), symbolAllocator.getTypes());
+        PlanPrinter.printGraphviz(selectPlan, "/tmp/plan/" + id.getAndIncrement() + "-CorrelatedJoin-plan.dot");
+
+        return builder;
     }
 
     public PlanBuilder appendCorrelatedJoin(PlanBuilder subPlan, PlanBuilder subqueryPlan, Query query, CorrelatedJoinNode.Type type, Expression filterCondition, Map<ScopeAware<Expression>, Symbol> mappings)

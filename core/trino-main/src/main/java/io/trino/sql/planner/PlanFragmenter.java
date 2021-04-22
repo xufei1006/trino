@@ -50,9 +50,13 @@ import io.trino.sql.planner.plan.TableWriterNode;
 import io.trino.sql.planner.plan.TopNRankingNode;
 import io.trino.sql.planner.plan.ValuesNode;
 import io.trino.sql.planner.plan.WindowNode;
+import io.trino.sql.planner.planprinter.PlanPrinter;
 
 import javax.inject.Inject;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -116,6 +120,17 @@ public class PlanFragmenter
         SubPlan subPlan = fragmenter.buildRootFragment(root, properties);
         subPlan = reassignPartitioningHandleIfNecessary(session, subPlan);
         subPlan = analyzeGroupedExecution(session, subPlan);
+
+        String graph = PlanPrinter.graphvizDistributedPlan(subPlan);
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter("/tmp/plan/400-PlanFragment.dot"));
+            writer.write(graph);
+            writer.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
 
         checkState(!isForceSingleNodeOutput(session) || subPlan.getFragment().getPartitioning().isSingleNode(), "Root of PlanFragment is not single node");
 

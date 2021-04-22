@@ -30,6 +30,7 @@ import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.Parameter;
 import io.trino.sql.tree.Statement;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,10 +86,31 @@ public class Analyzer
 
     public Analysis analyze(Statement statement, boolean isDescribe)
     {
+        try {
+            File file = new File("/tmp/plan/");
+            if (!file.exists()) {
+                file.mkdir();
+            }
+            else {
+                final File[] files = file.listFiles();
+                for (File f : files) {
+                    f.delete();
+                }
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        TreePrinter.printGraphviz(statement, null, "/tmp/plan/100-statement.dot");
+
         Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, parameterLookup, groupProvider, accessControl, warningCollector, statsCalculator);
+        TreePrinter.printGraphviz(rewrittenStatement, null, "/tmp/plan/101-rewrittenStatement.dot");
+
         Analysis analysis = new Analysis(rewrittenStatement, parameterLookup, isDescribe);
         StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser, groupProvider, accessControl, session, warningCollector, CorrelationSupport.ALLOWED);
         analyzer.analyze(rewrittenStatement, Optional.empty());
+        TreePrinter.printGraphviz(analysis.getStatement(), analysis.getScopes(), "/tmp/plan/102-analyzedStatement.dot");
 
         // check column access permissions for each table
         analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
