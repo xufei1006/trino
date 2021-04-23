@@ -102,15 +102,15 @@ public class Analyzer
             e.printStackTrace();
         }
 
-        TreePrinter.printGraphviz(statement, null, "/tmp/plan/100-statement.dot");
+        TreePrinter.printGraphviz(statement, null, "/tmp/plan/1000-statement.dot");
 
         Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, parameterLookup, groupProvider, accessControl, warningCollector, statsCalculator);
-        TreePrinter.printGraphviz(rewrittenStatement, null, "/tmp/plan/101-rewrittenStatement.dot");
+        TreePrinter.printGraphviz(rewrittenStatement, null, "/tmp/plan/1001-rewrittenStatement.dot");
 
         Analysis analysis = new Analysis(rewrittenStatement, parameterLookup, isDescribe);
         StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser, groupProvider, accessControl, session, warningCollector, CorrelationSupport.ALLOWED);
         analyzer.analyze(rewrittenStatement, Optional.empty());
-        TreePrinter.printGraphviz(analysis.getStatement(), analysis.getScopes(), "/tmp/plan/102-analyzedStatement.dot");
+        TreePrinter.printGraphviz(analysis.getStatement(), analysis.getScopes(), "/tmp/plan/1002-analyzedStatement.dot");
 
         // check column access permissions for each table
         analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->

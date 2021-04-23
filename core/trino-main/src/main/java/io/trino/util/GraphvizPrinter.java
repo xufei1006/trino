@@ -492,7 +492,10 @@ public final class GraphvizPrinter
                 joinExpressions.add(clause.toExpression());
             }
 
-            String criteria = Joiner.on(" AND ").join(joinExpressions);
+            String criteria = "Criteria \n " + Joiner.on(" AND ").join(joinExpressions);
+            if (node.getFilter().isPresent()) {
+                criteria = criteria + "|" + "Filter \n" + node.getFilter().get();
+            }
             printNode(node, node.getType().getJoinLabel(), criteria, NODE_COLORS.get(NodeType.JOIN));
 
             node.getLeft().accept(this, context);

@@ -124,7 +124,7 @@ public class PlanFragmenter
         String graph = PlanPrinter.graphvizDistributedPlan(subPlan);
         BufferedWriter writer = null;
         try {
-            writer = new BufferedWriter(new FileWriter("/tmp/plan/400-PlanFragment.dot"));
+            writer = new BufferedWriter(new FileWriter("/tmp/plan/4000-PlanFragment.dot"));
             writer.write(graph);
             writer.close();
         }

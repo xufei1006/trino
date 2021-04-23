@@ -209,9 +209,9 @@ public class LogicalPlanner
 
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
             String initPlan = PlanPrinter.graphvizLogicalPlan(root, symbolAllocator.getTypes());
-            PlanPrinter.printGraphviz(initPlan, "/tmp/plan/300-init.dot");
+            PlanPrinter.printGraphviz(initPlan, "/tmp/plan/3000-init.dot");
 
-            int i = 301;
+            int i = 3001;
 
             for (PlanOptimizer optimizer : planOptimizers) {
                 root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator, idAllocator, warningCollector);
@@ -690,11 +690,11 @@ public class LogicalPlanner
         return new OutputNode(idAllocator.getNextId(), plan.getRoot(), names.build(), outputs.build());
     }
 
-    public static AtomicInteger id = new AtomicInteger(200);
+    public static AtomicInteger id = new AtomicInteger(2000);
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)
     {
-        id.set(200);
+        id.set(2000);
         return new RelationPlanner(analysis, symbolAllocator, idAllocator, buildLambdaDeclarationToSymbolMap(analysis, symbolAllocator), metadata, Optional.empty(), session, ImmutableMap.of())
                 .process(query, null);
     }
